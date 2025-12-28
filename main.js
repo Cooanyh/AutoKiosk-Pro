@@ -88,20 +88,20 @@ app.on('ready', () => {
     createWindow();
 
     // Register global shortcuts with feedback
-    const shortcutS = globalShortcut.register('CommandOrControl+Alt+S', () => {
+    const shortcutS = globalShortcut.register('CommandOrControl+S', () => {
         console.log('Settings shortcut triggered');
         createSettingsWindow();
     });
     if (!shortcutS) {
-        console.error('Failed to register Ctrl+Alt+S shortcut');
+        console.error('Failed to register Ctrl+S shortcut');
     }
 
-    const shortcutQ = globalShortcut.register('CommandOrControl+Alt+Q', () => {
+    const shortcutQ = globalShortcut.register('CommandOrControl+Q', () => {
         console.log('Quit shortcut triggered');
         app.quit();
     });
     if (!shortcutQ) {
-        console.error('Failed to register Ctrl+Alt+Q shortcut');
+        console.error('Failed to register Ctrl+Q shortcut');
     }
 
     // Also register accelerators using Menu for reliability
@@ -112,12 +112,12 @@ app.on('ready', () => {
             submenu: [
                 {
                     label: 'Settings',
-                    accelerator: 'CommandOrControl+Alt+S',
+                    accelerator: 'CommandOrControl+S',
                     click: () => createSettingsWindow()
                 },
                 {
                     label: 'Quit',
-                    accelerator: 'CommandOrControl+Alt+Q',
+                    accelerator: 'CommandOrControl+Q',
                     click: () => app.quit()
                 }
             ]
