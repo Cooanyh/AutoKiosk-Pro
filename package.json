@@ -1,20 +1,42 @@
-```json
 {
   "name": "autokiosk-pro",
   "version": "1.0.0",
-  "description": "",
+  "description": "Auto fullscreen browser with scheduled reminders and shutdown",
   "main": "main.js",
-  "directories": {
-    "doc": "doc"
-  },
   "scripts": {
     "start": "electron .",
+    "build": "electron-builder --win",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "kiosk",
+    "electron",
+    "fullscreen",
+    "automation"
+  ],
+  "author": "Cooanyh",
+  "license": "MIT",
   "devDependencies": {
-    "electron": "^39.2.7"
+    "electron": "^39.2.7",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.cooanyh.autokiosk-pro",
+    "productName": "AutoKiosk-Pro",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "settings.html",
+      "reminder.js",
+      "package.json"
+    ]
   }
 }
