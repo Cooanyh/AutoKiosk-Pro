@@ -6,7 +6,7 @@ const { exec } = require('child_process');
 let mainWindow;
 let settingsWindow;
 let config = {
-    url: 'https://www.google.com',
+    url: 'https://coren.xin/',
     zoomFactor: 1.0,
     alwaysOnTop: true,
     autoStart: false,
@@ -87,14 +87,43 @@ app.on('ready', () => {
     loadConfig();
     createWindow();
 
-    // Register shortcuts
-    globalShortcut.register('CommandOrControl+Alt+S', () => {
+    // Register global shortcuts with feedback
+    const shortcutS = globalShortcut.register('CommandOrControl+Alt+S', () => {
+        console.log('Settings shortcut triggered');
         createSettingsWindow();
     });
+    if (!shortcutS) {
+        console.error('Failed to register Ctrl+Alt+S shortcut');
+    }
 
-    globalShortcut.register('CommandOrControl+Alt+Q', () => {
+    const shortcutQ = globalShortcut.register('CommandOrControl+Alt+Q', () => {
+        console.log('Quit shortcut triggered');
         app.quit();
     });
+    if (!shortcutQ) {
+        console.error('Failed to register Ctrl+Alt+Q shortcut');
+    }
+
+    // Also register accelerators using Menu for reliability
+    const { Menu } = require('electron');
+    const menuTemplate = [
+        {
+            label: 'AutoKiosk',
+            submenu: [
+                {
+                    label: 'Settings',
+                    accelerator: 'CommandOrControl+Alt+S',
+                    click: () => createSettingsWindow()
+                },
+                {
+                    label: 'Quit',
+                    accelerator: 'CommandOrControl+Alt+Q',
+                    click: () => app.quit()
+                }
+            ]
+        }
+    ];
+    Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     // Timed functions
     setInterval(() => {
@@ -148,4 +177,9 @@ app.on('window-all-closed', function () {
 
 app.on('activate', function () {
     if (mainWindow === null) createWindow();
+});
+
+// Clean up shortcuts on exit
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
 });

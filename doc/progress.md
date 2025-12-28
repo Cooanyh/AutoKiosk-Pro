@@ -10,6 +10,8 @@
 - [x] 自动创建 GitHub 仓库并推送代码 (已排除 node_modules)
 - [x] 添加 README.md 和 MIT LICENSE
 - [x] 配置并使用 electron-builder 打包为 Windows .exe 文件
+- [x] 修复全局快捷键注册问题（添加 Menu 加速器备选）
+- [x] 更新默认 URL 为 https://coren.xin/
 
 ### 当前状态
-所有功能已完成，并成功打包为可执行文件。可以在 `dist/` 目录找到 `.exe` 安装程序。
+所有功能已完成，快捷键问题已修复，新版本已重新打包并推送至 GitHub。
