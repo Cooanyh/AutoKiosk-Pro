@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>AutoKiosk-Pro Settings</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --input-bg: #334155;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 2rem;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .field {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--input-bg);
+            border: 1px solid #475569;
+            border-radius: 0.5rem;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-group input {
+            width: auto;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary-color);
+            border: none;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .hint {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 1rem;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>AutoKiosk-Pro Settings</h1>
+        <div class="field">
+            <label>Startup URL</label>
+            <input type="text" id="url" placeholder="https://...">
+        </div>
+        <div class="field">
+            <label>Zoom Level (%)</label>
+            <input type="number" id="zoom" step="10" value="100">
+        </div>
+        <div class="field checkbox-group">
+            <input type="checkbox" id="alwaysOnTop">
+            <label for="alwaysOnTop">Always on Top (Ensure visiblity)</label>
+        </div>
+        <div class="field checkbox-group">
+            <input type="checkbox" id="autoStart">
+            <label for="autoStart">Start on Boot</label>
+        </div>
+        <div class="field">
+            <label>Scheduled Shutdown (HH:mm)</label>
+            <input type="time" id="shutdownTime">
+        </div>
+        <div class="field">
+            <label>Timed Reminders</label>
+            <div id="reminderList" style="margin-bottom: 0.5rem;"></div>
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="time" id="newReminderTime" style="width: 120px;">
+                <input type="text" id="newReminderText" placeholder="Message content...">
+                <button id="addReminder" style="width: 80px; padding: 0.5rem;">Add</button>
+            </div>
+        </div>
+        <button id="save">Save and Apply</button>
+        <div class="hint">
+            Shortcuts: Ctrl+Alt+S (Settings) | Ctrl+Alt+Q (Exit)
+        </div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let reminders = [];
+
+        async function init() {
+            const config = await ipcRenderer.invoke('get-config');
+            document.getElementById('url').value = config.url;
+            document.getElementById('zoom').value = config.zoomFactor * 100;
+            document.getElementById('alwaysOnTop').checked = config.alwaysOnTop;
+            document.getElementById('autoStart').checked = config.autoStart;
+            document.getElementById('shutdownTime').value = config.shutdownTime || '';
+            reminders = config.reminders || [];
+            renderReminders();
+        }
+
+        function renderReminders() {
+            const list = document.getElementById('reminderList');
+            list.innerHTML = '';
+            reminders.forEach((r, index) => {
+                const div = document.createElement('div');
+                div.style = 'display: flex; justify-content: space-between; align-items: center; background: #334155; padding: 0.5rem; border-radius: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8rem;';
+                div.innerHTML = `
+                    <span>${r.time} - ${r.text}</span>
+                    <span style="color: #ef4444; cursor: pointer;" onclick="removeReminder(${index})">Delete</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        window.removeReminder = (index) => {
+            reminders.splice(index, 1);
+            renderReminders();
+        };
+
+        document.getElementById('addReminder').addEventListener('click', () => {
+            const time = document.getElementById('newReminderTime').value;
+            const text = document.getElementById('newReminderText').value;
+            if (time && text) {
+                reminders.push({ time, text, showed: false });
+                renderReminders();
+                document.getElementById('newReminderText').value = '';
+            }
+        });
+
+        document.getElementById('save').addEventListener('click', () => {
+            const newConfig = {
+                url: document.getElementById('url').value,
+                zoomFactor: Math.max(0.1, parseFloat(document.getElementById('zoom').value) / 100),
+                alwaysOnTop: document.getElementById('alwaysOnTop').checked,
+                autoStart: document.getElementById('autoStart').checked,
+                shutdownTime: document.getElementById('shutdownTime').value,
+                reminders: reminders
+            };
+            ipcRenderer.send('save-settings', newConfig);
+            alert('Settings saved and synchronized!');
+        });
+        ipcRenderer.send('save-settings', newConfig);
+        alert('Settings saved!');
+        });
+
+        init();
+    </script>
+</body>
+
+</html>
