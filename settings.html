@@ -22,7 +22,7 @@
         }
 
         .container {
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
             background: var(--card-bg);
             padding: 2rem;
@@ -52,7 +52,8 @@
         }
 
         input,
-        select {
+        select,
+        textarea {
             width: 100%;
             padding: 0.75rem;
             background: var(--input-bg);
@@ -60,6 +61,12 @@
             border-radius: 0.5rem;
             color: white;
             box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
         }
 
         .checkbox-group {
@@ -113,6 +120,49 @@
         .lang-switch button.active {
             background: var(--primary-color);
         }
+
+        .reminder-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .reminder-row input[type="time"] {
+            width: 110px;
+            flex-shrink: 0;
+        }
+
+        .reminder-row select {
+            width: 100px;
+            flex-shrink: 0;
+        }
+
+        .reminder-row textarea {
+            flex: 1;
+            min-height: 60px;
+        }
+
+        .reminder-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #334155;
+            padding: 0.5rem;
+            border-radius: 0.4rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.8rem;
+        }
+
+        .reminder-item .delete-btn {
+            color: #ef4444;
+            cursor: pointer;
+        }
+
+        .reminder-meta {
+            color: #94a3b8;
+            font-size: 0.7rem;
+        }
     </style>
 </head>
 
@@ -145,13 +195,19 @@
         </div>
         <div class="field">
             <label data-i18n="reminders">定时提醒</label>
-            <div id="reminderList" style="margin-bottom: 0.5rem;"></div>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="time" id="newReminderTime" style="width: 120px;">
-                <input type="text" id="newReminderText" data-i18n-placeholder="reminderPlaceholder"
-                    placeholder="提醒内容...">
-                <button id="addReminder" style="width: 80px; padding: 0.5rem;" data-i18n="add">添加</button>
+            <div id="reminderList"></div>
+            <div class="reminder-row">
+                <input type="time" id="newReminderTime">
+                <select id="newReminderRepeat">
+                    <option value="once" data-i18n-option="once">仅一次</option>
+                    <option value="daily" data-i18n-option="daily">每天</option>
+                    <option value="weekday" data-i18n-option="weekday">工作日</option>
+                    <option value="weekend" data-i18n-option="weekend">周末</option>
+                </select>
+                <textarea id="newReminderText" data-i18n-placeholder="reminderPlaceholder"
+                    placeholder="提醒内容（支持 Markdown）..."></textarea>
             </div>
+            <button id="addReminder" style="margin-top: 0.5rem;" data-i18n="add">添加提醒</button>
         </div>
         <button id="save" data-i18n="save">保存并应用</button>
         <div class="hint" data-i18n="hint">
@@ -170,12 +226,16 @@
                 autoStart: '开机自启动',
                 shutdown: '定时关机 (HH:mm)',
                 reminders: '定时提醒',
-                reminderPlaceholder: '提醒内容...',
-                add: '添加',
+                reminderPlaceholder: '提醒内容（支持 Markdown）...',
+                add: '添加提醒',
                 save: '保存并应用',
                 hint: '快捷键: Ctrl+S (设置) | Ctrl+Q (退出)',
                 delete: '删除',
-                saved: '设置已保存并同步！'
+                saved: '设置已保存！窗口即将关闭...',
+                once: '仅一次',
+                daily: '每天',
+                weekday: '工作日',
+                weekend: '周末'
             },
             en: {
                 title: 'AutoKiosk-Pro Settings',
@@ -185,13 +245,22 @@
                 autoStart: 'Start on Boot',
                 shutdown: 'Scheduled Shutdown (HH:mm)',
                 reminders: 'Timed Reminders',
-                reminderPlaceholder: 'Message content...',
-                add: 'Add',
+                reminderPlaceholder: 'Message content (Markdown supported)...',
+                add: 'Add Reminder',
                 save: 'Save and Apply',
                 hint: 'Shortcuts: Ctrl+S (Settings) | Ctrl+Q (Exit)',
                 delete: 'Delete',
-                saved: 'Settings saved and synchronized!'
+                saved: 'Settings saved! Window will close...',
+                once: 'Once',
+                daily: 'Daily',
+                weekday: 'Weekdays',
+                weekend: 'Weekends'
             }
+        };
+
+        const repeatLabels = {
+            zh: { once: '仅一次', daily: '每天', weekday: '工作日', weekend: '周末' },
+            en: { once: 'Once', daily: 'Daily', weekday: 'Weekdays', weekend: 'Weekends' }
         };
 
         let currentLang = 'zh';
@@ -210,6 +279,12 @@
                 const key = el.getAttribute('data-i18n-placeholder');
                 if (i18n[lang][key]) {
                     el.placeholder = i18n[lang][key];
+                }
+            });
+            document.querySelectorAll('[data-i18n-option]').forEach(el => {
+                const key = el.getAttribute('data-i18n-option');
+                if (i18n[lang][key]) {
+                    el.textContent = i18n[lang][key];
                 }
             });
             document.getElementById('langZh').classList.toggle('active', lang === 'zh');
@@ -239,10 +314,15 @@
             list.innerHTML = '';
             reminders.forEach((r, index) => {
                 const div = document.createElement('div');
-                div.style = 'display: flex; justify-content: space-between; align-items: center; background: #334155; padding: 0.5rem; border-radius: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8rem;';
+                div.className = 'reminder-item';
+                const repeatLabel = repeatLabels[currentLang][r.repeat || 'once'];
+                const preview = r.text.length > 50 ? r.text.substring(0, 50) + '...' : r.text;
                 div.innerHTML = `
-                    <span>${r.time} - ${r.text}</span>
-                    <span style="color: #ef4444; cursor: pointer;" onclick="removeReminder(${index})">${i18n[currentLang].delete}</span>
+                    <div>
+                        <div>${r.time} - ${preview}</div>
+                        <div class="reminder-meta">${repeatLabel}</div>
+                    </div>
+                    <span class="delete-btn" onclick="removeReminder(${index})">${i18n[currentLang].delete}</span>
                 `;
                 list.appendChild(div);
             });
@@ -256,8 +336,9 @@
         document.getElementById('addReminder').addEventListener('click', () => {
             const time = document.getElementById('newReminderTime').value;
             const text = document.getElementById('newReminderText').value;
+            const repeat = document.getElementById('newReminderRepeat').value;
             if (time && text) {
-                reminders.push({ time, text, showed: false });
+                reminders.push({ time, text, repeat, showed: false });
                 renderReminders();
                 document.getElementById('newReminderText').value = '';
             }
@@ -273,7 +354,6 @@
                 reminders: reminders
             };
             ipcRenderer.send('save-settings', newConfig);
-            alert(i18n[currentLang].saved);
         });
 
         init();

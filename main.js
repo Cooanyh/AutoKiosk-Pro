@@ -67,10 +67,16 @@ function createSettingsWindow() {
         return;
     }
 
+    // Temporarily disable always-on-top for main window
+    if (mainWindow) {
+        mainWindow.setAlwaysOnTop(false);
+    }
+
     settingsWindow = new BrowserWindow({
         width: 800,
-        height: 600,
+        height: 700,
         title: 'AutoKiosk-Pro Settings',
+        alwaysOnTop: true,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
@@ -80,6 +86,10 @@ function createSettingsWindow() {
     settingsWindow.loadFile('settings.html');
     settingsWindow.on('closed', () => {
         settingsWindow = null;
+        // Restore always-on-top for main window
+        if (mainWindow && config.alwaysOnTop) {
+            mainWindow.setAlwaysOnTop(true);
+        }
     });
 }
 
@@ -131,14 +141,36 @@ app.on('ready', () => {
         const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
         // Check reminders
+        const dayOfWeek = now.getDay(); // 0=Sunday, 1-5=Mon-Fri, 6=Saturday
+        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
         config.reminders.forEach(reminder => {
+            const repeat = reminder.repeat || 'once';
+            let shouldShow = false;
+
             if (reminder.time === currentTime && !reminder.showed) {
-                if (mainWindow) {
-                    mainWindow.webContents.send('show-reminder', reminder.text);
+                if (repeat === 'daily') {
+                    shouldShow = true;
+                } else if (repeat === 'weekday' && isWeekday) {
+                    shouldShow = true;
+                } else if (repeat === 'weekend' && isWeekend) {
+                    shouldShow = true;
+                } else if (repeat === 'once') {
+                    shouldShow = true;
                 }
-                reminder.showed = true; // Mark as showed for this minute
+
+                if (shouldShow && mainWindow) {
+                    mainWindow.webContents.send('show-reminder', reminder.text);
+                    reminder.showed = true;
+                    // For 'once' reminders, mark as permanently shown
+                    if (repeat === 'once') {
+                        reminder.disabled = true;
+                        saveConfig();
+                    }
+                }
             } else if (reminder.time !== currentTime) {
-                reminder.showed = false; // Reset for next day
+                reminder.showed = false; // Reset for next trigger
             }
         });
 
@@ -166,6 +198,11 @@ app.on('ready', () => {
             openAtLogin: config.autoStart,
             path: app.getPath('exe')
         });
+
+        // Close settings window after save
+        if (settingsWindow) {
+            settingsWindow.close();
+        }
     });
 
     ipcMain.handle('get-config', () => config);
