@@ -209,6 +209,14 @@
             </div>
             <button id="addReminder" style="margin-top: 0.5rem;" data-i18n="add">添加提醒</button>
         </div>
+        <div class="field checkbox-group">
+            <input type="checkbox" id="showFloatingBtn" checked>
+            <label for="showFloatingBtn" data-i18n="showFloatingBtn">显示浮动设置按钮</label>
+        </div>
+        <div class="field" style="display: flex; gap: 0.5rem;">
+            <button id="shutdownNow" style="background: #ef4444;" data-i18n="shutdownNow">立即关机</button>
+            <button id="restartNow" style="background: #f59e0b;" data-i18n="restartNow">立即重启</button>
+        </div>
         <button id="save" data-i18n="save">保存并应用</button>
         <div class="hint" data-i18n="hint">
             快捷键: Ctrl+S (设置) | Ctrl+Q (退出)
@@ -235,7 +243,12 @@
                 once: '仅一次',
                 daily: '每天',
                 weekday: '工作日',
-                weekend: '周末'
+                weekend: '周末',
+                showFloatingBtn: '显示浮动设置按钮',
+                shutdownNow: '立即关机',
+                restartNow: '立即重启',
+                confirmShutdown: '确定要立即关机吗？',
+                confirmRestart: '确定要立即重启吗？'
             },
             en: {
                 title: 'AutoKiosk-Pro Settings',
@@ -254,7 +267,12 @@
                 once: 'Once',
                 daily: 'Daily',
                 weekday: 'Weekdays',
-                weekend: 'Weekends'
+                weekend: 'Weekends',
+                showFloatingBtn: 'Show floating settings button',
+                shutdownNow: 'Shutdown Now',
+                restartNow: 'Restart Now',
+                confirmShutdown: 'Are you sure you want to shutdown now?',
+                confirmRestart: 'Are you sure you want to restart now?'
             }
         };
 
@@ -305,6 +323,7 @@
             document.getElementById('alwaysOnTop').checked = config.alwaysOnTop;
             document.getElementById('autoStart').checked = config.autoStart;
             document.getElementById('shutdownTime').value = config.shutdownTime || '';
+            document.getElementById('showFloatingBtn').checked = config.showFloatingBtn !== false;
             reminders = config.reminders || [];
             renderReminders();
         }
@@ -351,9 +370,22 @@
                 alwaysOnTop: document.getElementById('alwaysOnTop').checked,
                 autoStart: document.getElementById('autoStart').checked,
                 shutdownTime: document.getElementById('shutdownTime').value,
-                reminders: reminders
+                reminders: reminders,
+                showFloatingBtn: document.getElementById('showFloatingBtn').checked
             };
             ipcRenderer.send('save-settings', newConfig);
+        });
+
+        document.getElementById('shutdownNow').addEventListener('click', () => {
+            if (confirm(i18n[currentLang].confirmShutdown)) {
+                ipcRenderer.send('power-action', 'shutdown');
+            }
+        });
+
+        document.getElementById('restartNow').addEventListener('click', () => {
+            if (confirm(i18n[currentLang].confirmRestart)) {
+                ipcRenderer.send('power-action', 'restart');
+            }
         });
 
         init();

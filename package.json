@@ -1,6 +1,6 @@
 {
   "name": "autokiosk-pro",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Auto fullscreen browser with scheduled reminders and shutdown",
   "main": "main.js",
   "scripts": {

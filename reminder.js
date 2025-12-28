@@ -6,6 +6,65 @@
 
     const style = document.createElement('style');
     style.textContent = `
+        .autokiosk-floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(79, 70, 229, 0.7);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 999997;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+        .autokiosk-floating-btn:hover {
+            background: rgba(79, 70, 229, 0.95);
+            transform: scale(1.1);
+        }
+        .autokiosk-floating-btn.highlight {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); }
+        }
+        .autokiosk-tooltip {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            z-index: 999997;
+            max-width: 200px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .autokiosk-tooltip.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .autokiosk-tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            right: 20px;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid rgba(15, 23, 42, 0.95);
+        }
         .autokiosk-reminder {
             position: fixed;
             top: 50%;
@@ -106,10 +165,25 @@
     `;
     document.head.appendChild(style);
 
+    // Create floating button
+    const floatingBtn = document.createElement('button');
+    floatingBtn.className = 'autokiosk-floating-btn';
+    floatingBtn.innerHTML = '⚙️';
+    floatingBtn.title = 'Settings (Ctrl+S)';
+    document.body.appendChild(floatingBtn);
+
+    // Create tooltip for first launch
+    const tooltip = document.createElement('div');
+    tooltip.className = 'autokiosk-tooltip';
+    tooltip.innerHTML = '👋 点击此按钮打开设置<br>快捷键: <strong>Ctrl+S</strong>';
+    document.body.appendChild(tooltip);
+
+    // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'autokiosk-overlay';
     document.body.appendChild(overlay);
 
+    // Create reminder modal
     const reminderEl = document.createElement('div');
     reminderEl.className = 'autokiosk-reminder';
     reminderEl.innerHTML = `
@@ -129,8 +203,35 @@
     document.getElementById('autokiosk-close').addEventListener('click', closeReminder);
     overlay.addEventListener('click', closeReminder);
 
+    // Floating button click - open settings
+    floatingBtn.addEventListener('click', () => {
+        window.electronAPI.openSettings();
+    });
+
+    // Check if should show floating button and first launch highlight
+    window.electronAPI.getConfig().then(config => {
+        if (config.showFloatingBtn === false) {
+            floatingBtn.style.display = 'none';
+        }
+
+        // First launch highlight
+        if (!config.firstLaunchDone) {
+            floatingBtn.classList.add('highlight');
+            tooltip.classList.add('show');
+
+            // Hide tooltip after 5 seconds
+            setTimeout(() => {
+                tooltip.classList.remove('show');
+                floatingBtn.classList.remove('highlight');
+            }, 5000);
+
+            // Mark first launch as done
+            window.electronAPI.markFirstLaunchDone();
+        }
+    });
+
+    // Listen for show reminder
     window.electronAPI.onShowReminder((text) => {
-        // Wait for marked.js to load
         const renderContent = () => {
             if (typeof marked !== 'undefined') {
                 document.getElementById('autokiosk-text').innerHTML = marked.parse(text);

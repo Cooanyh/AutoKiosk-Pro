@@ -12,7 +12,9 @@ let config = {
     autoStart: false,
     timers: [],
     reminders: [],
-    shutdownTime: null
+    shutdownTime: null,
+    showFloatingBtn: true,
+    firstLaunchDone: false
 };
 
 const configPath = path.join(app.getPath('userData'), 'config.json');
@@ -206,6 +208,26 @@ app.on('ready', () => {
     });
 
     ipcMain.handle('get-config', () => config);
+
+    // Power action handler
+    ipcMain.on('power-action', (event, action) => {
+        if (action === 'shutdown') {
+            exec('shutdown /s /t 0');
+        } else if (action === 'restart') {
+            exec('shutdown /r /t 0');
+        }
+    });
+
+    // Open settings from renderer
+    ipcMain.on('open-settings', () => {
+        createSettingsWindow();
+    });
+
+    // Mark first launch as done
+    ipcMain.on('mark-first-launch-done', () => {
+        config.firstLaunchDone = true;
+        saveConfig();
+    });
 });
 
 app.on('window-all-closed', function () {
