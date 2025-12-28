@@ -94,52 +94,136 @@
             margin-top: 1rem;
             text-align: center;
         }
+
+        .lang-switch {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .lang-switch button {
+            width: auto;
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            background: #475569;
+        }
+
+        .lang-switch button.active {
+            background: var(--primary-color);
+        }
     </style>
 </head>
 
 <body>
+    <div class="lang-switch">
+        <button id="langZh" class="active">中文</button>
+        <button id="langEn">English</button>
+    </div>
     <div class="container">
-        <h1>AutoKiosk-Pro Settings</h1>
+        <h1 data-i18n="title">AutoKiosk-Pro 设置</h1>
         <div class="field">
-            <label>Startup URL</label>
+            <label data-i18n="url">启动网址</label>
             <input type="text" id="url" placeholder="https://...">
         </div>
         <div class="field">
-            <label>Zoom Level (%)</label>
+            <label data-i18n="zoom">缩放比例 (%)</label>
             <input type="number" id="zoom" step="10" value="100">
         </div>
         <div class="field checkbox-group">
             <input type="checkbox" id="alwaysOnTop">
-            <label for="alwaysOnTop">Always on Top (Ensure visiblity)</label>
+            <label for="alwaysOnTop" data-i18n="alwaysOnTop">始终置顶显示</label>
         </div>
         <div class="field checkbox-group">
             <input type="checkbox" id="autoStart">
-            <label for="autoStart">Start on Boot</label>
+            <label for="autoStart" data-i18n="autoStart">开机自启动</label>
         </div>
         <div class="field">
-            <label>Scheduled Shutdown (HH:mm)</label>
+            <label data-i18n="shutdown">定时关机 (HH:mm)</label>
             <input type="time" id="shutdownTime">
         </div>
         <div class="field">
-            <label>Timed Reminders</label>
+            <label data-i18n="reminders">定时提醒</label>
             <div id="reminderList" style="margin-bottom: 0.5rem;"></div>
             <div style="display: flex; gap: 0.5rem;">
                 <input type="time" id="newReminderTime" style="width: 120px;">
-                <input type="text" id="newReminderText" placeholder="Message content...">
-                <button id="addReminder" style="width: 80px; padding: 0.5rem;">Add</button>
+                <input type="text" id="newReminderText" data-i18n-placeholder="reminderPlaceholder"
+                    placeholder="提醒内容...">
+                <button id="addReminder" style="width: 80px; padding: 0.5rem;" data-i18n="add">添加</button>
             </div>
         </div>
-        <button id="save">Save and Apply</button>
-        <div class="hint">
-            Shortcuts: Ctrl+S (Settings) | Ctrl+Q (Exit)
+        <button id="save" data-i18n="save">保存并应用</button>
+        <div class="hint" data-i18n="hint">
+            快捷键: Ctrl+S (设置) | Ctrl+Q (退出)
         </div>
     </div>
     <script>
         const { ipcRenderer } = require('electron');
 
+        const i18n = {
+            zh: {
+                title: 'AutoKiosk-Pro 设置',
+                url: '启动网址',
+                zoom: '缩放比例 (%)',
+                alwaysOnTop: '始终置顶显示',
+                autoStart: '开机自启动',
+                shutdown: '定时关机 (HH:mm)',
+                reminders: '定时提醒',
+                reminderPlaceholder: '提醒内容...',
+                add: '添加',
+                save: '保存并应用',
+                hint: '快捷键: Ctrl+S (设置) | Ctrl+Q (退出)',
+                delete: '删除',
+                saved: '设置已保存并同步！'
+            },
+            en: {
+                title: 'AutoKiosk-Pro Settings',
+                url: 'Startup URL',
+                zoom: 'Zoom Level (%)',
+                alwaysOnTop: 'Always on Top',
+                autoStart: 'Start on Boot',
+                shutdown: 'Scheduled Shutdown (HH:mm)',
+                reminders: 'Timed Reminders',
+                reminderPlaceholder: 'Message content...',
+                add: 'Add',
+                save: 'Save and Apply',
+                hint: 'Shortcuts: Ctrl+S (Settings) | Ctrl+Q (Exit)',
+                delete: 'Delete',
+                saved: 'Settings saved and synchronized!'
+            }
+        };
+
+        let currentLang = 'zh';
         let reminders = [];
 
+        function applyLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('autokiosk-lang', lang);
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[lang][key]) {
+                    el.textContent = i18n[lang][key];
+                }
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (i18n[lang][key]) {
+                    el.placeholder = i18n[lang][key];
+                }
+            });
+            document.getElementById('langZh').classList.toggle('active', lang === 'zh');
+            document.getElementById('langEn').classList.toggle('active', lang === 'en');
+            renderReminders();
+        }
+
+        document.getElementById('langZh').addEventListener('click', () => applyLanguage('zh'));
+        document.getElementById('langEn').addEventListener('click', () => applyLanguage('en'));
+
         async function init() {
+            const savedLang = localStorage.getItem('autokiosk-lang') || 'zh';
+            applyLanguage(savedLang);
+
             const config = await ipcRenderer.invoke('get-config');
             document.getElementById('url').value = config.url;
             document.getElementById('zoom').value = config.zoomFactor * 100;
@@ -158,7 +242,7 @@
                 div.style = 'display: flex; justify-content: space-between; align-items: center; background: #334155; padding: 0.5rem; border-radius: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8rem;';
                 div.innerHTML = `
                     <span>${r.time} - ${r.text}</span>
-                    <span style="color: #ef4444; cursor: pointer;" onclick="removeReminder(${index})">Delete</span>
+                    <span style="color: #ef4444; cursor: pointer;" onclick="removeReminder(${index})">${i18n[currentLang].delete}</span>
                 `;
                 list.appendChild(div);
             });
@@ -189,7 +273,7 @@
                 reminders: reminders
             };
             ipcRenderer.send('save-settings', newConfig);
-            alert('Settings saved and synchronized!');
+            alert(i18n[currentLang].saved);
         });
 
         init();
